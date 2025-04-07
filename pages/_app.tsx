@@ -34,7 +34,7 @@ function MyApp(props: Props) {
       });
 
       e.init({
-        cid: 'YOUR_CID', // 🔁 Replace with your Lytics customer ID
+        cid: '6462', // 🔁 Replace with your Lytics customer ID
         loadid: true,
       });
 
