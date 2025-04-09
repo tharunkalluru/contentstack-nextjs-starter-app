@@ -32,42 +32,46 @@ function MyApp(props: Props) {
 
   useEffect(() => {
     if (document.querySelector('script[src*="c.lytics.io/api/tag"]')) return;
-
-    window.jstag = window.jstag || {};
+  
+    window.jstag = window.jstag || ({} as any);
     window.jstag._q = window.jstag._q || [];
-
+  
     const methods = ['init', 'loadEntity', 'send', 'call', 'getid', 'setid', 'pageView'];
     methods.forEach((m) => {
       window.jstag[m] = function () {
         window.jstag._q.push([m].concat(Array.prototype.slice.call(arguments, 0)));
       };
     });
-
+  
     const script = document.createElement('script');
     script.src = 'https://c.lytics.io/api/tag/a84fef4e65fe894eecb707074a47c0f2/latest.min.js';
     script.async = true;
+  
     script.onload = () => {
+      console.log('[Lytics] Script loaded, initializing tag');
+  
       window.jstag.init({
         cid: 'a84fef4e65fe894eecb707074a47c0f2',
         loadid: true,
       });
-
-      // Wait until ready
+  
+      // Optional ready hook
       try {
         window.jstag.call('ready', () => {
-          console.log('[Lytics] Tag is ready, sending initial pageView...');
+          console.log('[Lytics] Ready hook triggered, firing pageView');
           window.jstag.pageView();
         });
       } catch (e) {
-        console.warn('[Lytics] call("ready") failed, falling back to manual pageView', e);
+        console.warn('[Lytics] call("ready") failed, fallbacking to manual fire', e);
         setTimeout(() => {
           if (window.jstag?.pageView) {
+            console.log('[Lytics] Manual pageView fallback fired');
             window.jstag.pageView();
           }
         }, 2000);
       }
     };
-
+  
     document.head.appendChild(script);
   }, []);
 
