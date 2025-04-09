@@ -10,12 +10,13 @@ import '../styles/style.css';
 import 'react-loading-skeleton/dist/skeleton.css';
 import '@contentstack/live-preview-utils/dist/main.css';
 import { Props } from "../typescript/pages";
-import { useEffect } from 'react'; // ✅ Required for script injection
+import { useEffect } from 'react';
 
-export {};
 declare global {
   interface Window {
     jstag: any;
+    pathfora?: any;
+    _pfacfg?: any;
   }
 }
 
@@ -31,82 +32,73 @@ function MyApp(props: Props) {
 
   useEffect(() => {
     if (document.querySelector('script[src*="c.lytics.io/api/tag"]')) return;
-  
-    const w = window as any;
-    const jstag = w.jstag = w.jstag || {};
-    jstag._q = jstag._q || [];
-    jstag.config = {}; // Fixes moarConfig crash
-  
-    const methods = ['init', 'loadEntity', 'send', 'call', 'getid', 'setid', 'pageView', 'getSegments'];
-    methods.forEach((method) => {
-      jstag[method] = function () {
-        jstag._q.push([method].concat(Array.prototype.slice.call(arguments, 0)));
+
+    window.jstag = window.jstag || {};
+    window.jstag._q = window.jstag._q || [];
+
+    const methods = ['init', 'loadEntity', 'send', 'call', 'getid', 'setid', 'pageView'];
+    methods.forEach((m) => {
+      window.jstag[m] = function () {
+        window.jstag._q.push([m].concat(Array.prototype.slice.call(arguments, 0)));
       };
     });
-  
-    jstag.init({
-      cid: 'a84fef4e65fe894eecb707074a47c0f2',
-      loadid: true,
-    });
-  
+
     const script = document.createElement('script');
     script.src = 'https://c.lytics.io/api/tag/a84fef4e65fe894eecb707074a47c0f2/latest.min.js';
     script.async = true;
     script.onload = () => {
-      console.log('[Lytics] Script loaded');
-    
+      window.jstag.init({
+        cid: 'a84fef4e65fe894eecb707074a47c0f2',
+        loadid: true,
+      });
+
+      // Wait until ready
       try {
-        // Primary approach: Lytics-ready hook
-        jstag.call('ready', () => {
-          console.log('[Lytics] Tag is ready, sending pageView...');
-          jstag.pageView();
+        window.jstag.call('ready', () => {
+          console.log('[Lytics] Tag is ready, sending initial pageView...');
+          window.jstag.pageView();
         });
       } catch (e) {
-        console.warn('[Lytics] call("ready") failed or unavailable', e);
+        console.warn('[Lytics] call("ready") failed, falling back to manual pageView', e);
+        setTimeout(() => {
+          if (window.jstag?.pageView) {
+            window.jstag.pageView();
+          }
+        }, 2000);
       }
-    
-      // Fallback: send pageView manually if not already fired
-      setTimeout(() => {
-        if (window.jstag?.pageView) {
-          console.log('[Lytics] Fallback pageView');
-          window.jstag.pageView();
-        } else {
-          console.warn('[Lytics] jstag.pageView still not available');
-        }
-      }, 2000);
     };
-  
+
     document.head.appendChild(script);
   }, []);
-  
-  
 
-  // ✅ SPA route change tracking for Lytics
+  // SPA route change tracking
   useEffect(() => {
-    const handleRouteChange = () => {
-      if ((window as any).jstag?.pageView) {
-        (window as any).jstag.pageView();
+    const onRouteChange = () => {
+      if (!window.jstag?.pageView) return;
 
-        // Optional: Refresh profile after navigation
-        (window as any).jstag.loadEntity((profile: any) => {
-          console.log('Lytics Profile after route change:', profile?.data);
-        });
+      console.log('[Lytics] Sending SPA routeChange pageView...');
+      window.jstag.pageView();
 
-        // Optional: Clear Pathfora campaigns
-        if ((window as any).pathfora) {
-          (window as any).jstag.config.pathfora.publish.candidates = {
+      if (window.pathfora?.clearAll) {
+        window.jstag.config.pathfora = window.jstag.config.pathfora || {};
+        window.jstag.config.pathfora.publish = {
+          candidates: {
             experiences: [],
             variations: [],
             legacyABTests: [],
-          };
-          (window as any)._pfacfg = {};
-          (window as any).pathfora.clearAll();
-        }
+          },
+        };
+        window._pfacfg = {};
+        window.pathfora.clearAll();
       }
+
+      window.jstag.loadEntity((p: any) => {
+        console.log('[Lytics] Profile refreshed:', p?.data);
+      });
     };
 
-    Router.events.on('routeChangeComplete', handleRouteChange);
-    return () => Router.events.off('routeChangeComplete', handleRouteChange);
+    Router.events.on('routeChangeComplete', onRouteChange);
+    return () => Router.events.off('routeChangeComplete', onRouteChange);
   }, []);
 
   const metaData = (seo: any) => {
@@ -132,11 +124,11 @@ function MyApp(props: Props) {
   return (
     <>
       <Head>
-        <meta name='application-name' content='Contentstack-Nextjs-Starter-App' />
-        <meta charSet='utf-8' />
-        <meta httpEquiv='X-UA-Compatible' content='IE=edge' />
-        <meta name='viewport' content='width=device-width,initial-scale=1,minimum-scale=1' />
-        <meta name='theme-color' content='#317EFB' />
+        <meta name="application-name" content="Contentstack-Nextjs-Starter-App" />
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1" />
+        <meta name="theme-color" content="#317EFB" />
         <title>Contentstack-Nextjs-Starter-App</title>
         {page?.seo && page.seo.enable_search_indexing && metaData(page.seo)}
       </Head>
