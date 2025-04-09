@@ -12,6 +12,13 @@ import '@contentstack/live-preview-utils/dist/main.css';
 import { Props } from "../typescript/pages";
 import { useEffect } from 'react'; // ✅ Required for script injection
 
+export {};
+declare global {
+  interface Window {
+    jstag: any;
+  }
+}
+
 // Progress bar events
 Router.events.on('routeChangeStart', () => NProgress.start());
 Router.events.on('routeChangeComplete', () => NProgress.done());
@@ -47,12 +54,26 @@ function MyApp(props: Props) {
     script.async = true;
     script.onload = () => {
       console.log('[Lytics] Script loaded');
-  
-      // ✅ Wait for Lytics tag to be fully ready
-      jstag.call('ready', () => {
-        console.log('[Lytics] Tag is ready, sending pageView...');
-        jstag.pageView(); // ✅ This will trigger /c and /personalize
-      });
+    
+      try {
+        // Primary approach: Lytics-ready hook
+        jstag.call('ready', () => {
+          console.log('[Lytics] Tag is ready, sending pageView...');
+          jstag.pageView();
+        });
+      } catch (e) {
+        console.warn('[Lytics] call("ready") failed or unavailable', e);
+      }
+    
+      // Fallback: send pageView manually if not already fired
+      setTimeout(() => {
+        if (window.jstag?.pageView) {
+          console.log('[Lytics] Fallback pageView');
+          window.jstag.pageView();
+        } else {
+          console.warn('[Lytics] jstag.pageView still not available');
+        }
+      }, 2000);
     };
   
     document.head.appendChild(script);
