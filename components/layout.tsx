@@ -3,6 +3,7 @@ import Header from './header';
 import Footer from './footer';
 import DevTools from './devtools';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { HeaderProps, FooterProps, PageProps, Posts, ChilderenProps, Entry, NavLinks, Links } from "../typescript/layout";
 
 export default function Layout({
@@ -67,6 +68,7 @@ export default function Layout({
         <>
         {children}
           <Analytics />
+          <SpeedInsights />
         {Object.keys(jsonObj).length && <DevTools response={jsonObj} />}
         </>
       </main>
